@@ -369,13 +369,17 @@
       </div>
       <div class="fila-2">
         <div class="campo">
-          <label>Fecha</label>
+          <label>Fecha desde</label>
           <input type="date" id="f-fecha" required>
         </div>
         <div class="campo">
-          <label>Hora</label>
-          <input type="time" id="f-hora">
+          <label>Fecha hasta (opcional)</label>
+          <input type="date" id="f-fecha-hasta">
         </div>
+      </div>
+      <div class="campo">
+        <label>Hora</label>
+        <input type="time" id="f-hora">
       </div>
       <div class="campo">
         <label>Lugar</label>
@@ -473,6 +477,7 @@ async function cargarEventos(){
     categoria: ev.categoria,
     depto: ev.depto,
     fecha: ev.fecha,
+    fechaHasta: ev.fecha_hasta,
     hora: ev.hora,
     lugar: ev.lugar,
     precio: ev.precio,
@@ -538,7 +543,8 @@ function renderizar(){
   const hoy = new Date().toISOString().slice(0,10); // fecha de hoy en formato YYYY-MM-DD
 
   let filtrados = eventos.filter(ev=>{
-    if(ev.fecha < hoy) return false; // oculta eventos con fecha ya pasada
+    const ultimoDia = ev.fechaHasta || ev.fecha;
+    if(ultimoDia < hoy) return false; // oculta eventos cuya última fecha ya pasó
     if(categoriaActiva && ev.categoria !== categoriaActiva) return false;
     if(depto && ev.depto !== depto) return false;
     if(texto && !(ev.titulo.toLowerCase().includes(texto) || ev.desc.toLowerCase().includes(texto) || ev.lugar.toLowerCase().includes(texto))) return false;
@@ -560,6 +566,11 @@ function renderizar(){
   grid.innerHTML = filtrados.map((ev,i)=>{
     const idxReal = eventos.indexOf(ev);
     const fechaLegible = new Date(ev.fecha+'T00:00:00').toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'});
+    let textoFecha = fechaLegible;
+    if(ev.fechaHasta && ev.fechaHasta !== ev.fecha){
+      const fechaHastaLegible = new Date(ev.fechaHasta+'T00:00:00').toLocaleDateString('es-UY',{day:'numeric',month:'short'});
+      textoFecha = `${fechaLegible} al ${fechaHastaLegible}`;
+    }
     return `
     <div class="card">
       <div class="card-imagen" ${ev.afiche ? `onclick="verAfiche('${idxReal}')"` : ''}>
@@ -568,7 +579,7 @@ function renderizar(){
         ${ev.afiche ? `<img src="${ev.afiche}" alt="Afiche de ${ev.titulo}">` : `<div class="sin-afiche">${emojiCat(ev.categoria)}</div>`}
       </div>
       <div class="card-body">
-        <div class="card-fecha">${fechaLegible}${ev.hora ? ' · '+ev.hora+' hs' : ''}</div>
+        <div class="card-fecha">${textoFecha}${ev.hora ? ' · '+ev.hora+' hs' : ''}</div>
         <div class="card-titulo">${ev.titulo}</div>
         <div class="card-meta">📍 ${ev.lugar || ev.depto} · ${ev.depto}</div>
         <div class="card-desc">${ev.desc}</div>
@@ -638,6 +649,7 @@ async function publicarEvento(e){
     categoria: document.getElementById('f-categoria').value,
     depto: document.getElementById('f-depto').value,
     fecha: document.getElementById('f-fecha').value,
+    fecha_hasta: document.getElementById('f-fecha-hasta').value || null,
     hora: document.getElementById('f-hora').value,
     lugar: document.getElementById('f-lugar').value,
     precio: document.getElementById('f-precio').value || 'Gratis',
