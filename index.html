@@ -535,8 +535,10 @@ function toggleCategoria(id){
 function renderizar(){
   const texto = document.getElementById('input-buscar').value.trim().toLowerCase();
   const depto = document.getElementById('select-depto').value;
+  const hoy = new Date().toISOString().slice(0,10); // fecha de hoy en formato YYYY-MM-DD
 
   let filtrados = eventos.filter(ev=>{
+    if(ev.fecha < hoy) return false; // oculta eventos con fecha ya pasada
     if(categoriaActiva && ev.categoria !== categoriaActiva) return false;
     if(depto && ev.depto !== depto) return false;
     if(texto && !(ev.titulo.toLowerCase().includes(texto) || ev.desc.toLowerCase().includes(texto) || ev.lugar.toLowerCase().includes(texto))) return false;
