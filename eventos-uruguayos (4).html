@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eventos Uruguayos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --celeste:#00A9E0;
+    --coral:#FF6B4A;
+    --amarillo:#FFC93C;
+    --violeta:#6C4AB6;
+    --verde:#2BB673;
+    --rosa:#E84A8A;
+    --gris-metal:#5B6470;
+    --tinta:#1B1B2F;
+    --crema:#FFFBF5;
+    --crema-2:#FFF3E4;
+    --borde:#EDE3D3;
+    --radio:18px;
+    --sombra: 0 8px 24px rgba(27,27,47,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--crema);
+    color:var(--tinta);
+    font-family:'Manrope',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Baloo 2',sans-serif;
+    letter-spacing:-0.01em;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;}
+  img{max-width:100%;display:block;}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky;top:0;z-index:40;
+    background:rgba(255,251,245,0.88);
+    backdrop-filter:blur(10px);
+    border-bottom:2px solid var(--borde);
+  }
+  .header-inner{
+    max-width:1180px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 24px;
+    gap:16px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .sol{
+    width:42px;height:42px;flex:none;
+    animation:girar 40s linear infinite;
+  }
+  @keyframes girar{ to{ transform:rotate(360deg);} }
+  .brand-text{display:flex;flex-direction:column;line-height:1.05;}
+  .brand-text b{font-family:'Baloo 2',sans-serif;font-size:20px;font-weight:800;color:var(--tinta);}
+  .brand-text span{font-size:11.5px;color:var(--gris-metal);font-weight:600;letter-spacing:.02em;}
+  .btn-publicar{
+    background:var(--verde);color:white;border:none;
+    padding:11px 20px;border-radius:100px;font-weight:700;font-size:14.5px;
+    box-shadow:0 4px 0 #1c8a54;
+    transition:transform .12s ease;
+    white-space:nowrap;
+  }
+  .btn-publicar:active{transform:translateY(3px);box-shadow:0 1px 0 #1c8a54;}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    max-width:1180px;margin:0 auto;
+    padding:56px 24px 28px;
+    display:grid;grid-template-columns:1.3fr 1fr;gap:32px;align-items:center;
+  }
+  .hero h1{
+    font-size:44px;font-weight:800;line-height:1.05;margin:0 0 14px;
+    color:var(--tinta);
+  }
+  .hero h1 em{
+    font-style:normal;
+    background:linear-gradient(100deg,var(--coral),var(--rosa));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{font-size:16.5px;color:var(--gris-metal);max-width:480px;margin:0 0 22px;}
+  .hero-badges{display:flex;gap:10px;flex-wrap:wrap;}
+  .hero-badge{
+    background:white;border:2px solid var(--borde);border-radius:100px;
+    padding:7px 14px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;
+  }
+  .hero-visual{
+    position:relative;height:220px;
+  }
+  .blob{
+    position:absolute;border-radius:50%;filter:blur(0);
+  }
+
+  /* ---------- Buscador / filtros ---------- */
+  .barra-filtros{
+    max-width:1180px;margin:0 auto;padding:0 24px 8px;
+  }
+  .buscador{
+    display:flex;gap:10px;background:white;border:2px solid var(--borde);
+    border-radius:100px;padding:6px 6px 6px 20px;box-shadow:var(--sombra);
+    align-items:center;margin-bottom:18px;
+  }
+  .buscador input{
+    border:none;outline:none;flex:1;font-size:15px;font-family:inherit;background:transparent;padding:10px 0;
+  }
+  .buscador select{
+    border:none;outline:none;background:var(--crema-2);border-radius:100px;padding:10px 16px;font-size:13.5px;font-weight:700;font-family:inherit;color:var(--tinta);
+  }
+  .btn-buscar{
+    background:var(--tinta);color:white;border:none;border-radius:100px;
+    width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex:none;
+  }
+  .categorias{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{
+    border:2px solid transparent;background:white;padding:9px 16px;border-radius:100px;
+    font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;
+    box-shadow:0 2px 8px rgba(27,27,47,0.06);
+    transition:transform .12s ease;
+  }
+  .chip:hover{transform:translateY(-2px);}
+  .chip.activo{color:white;}
+  .chip .dot{width:9px;height:9px;border-radius:50%;background:currentColor;}
+
+  /* ---------- Grid de eventos ---------- */
+  .contenedor{max-width:1180px;margin:0 auto;padding:20px 24px 80px;}
+  .grid-eventos{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:22px;
+    margin-top:18px;
+  }
+  .card{
+    background:white;border-radius:var(--radio);overflow:hidden;box-shadow:var(--sombra);
+    border:2px solid var(--borde);
+    transition:transform .18s ease, box-shadow .18s ease;
+    display:flex;flex-direction:column;
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(27,27,47,0.14);}
+  .card-imagen{
+    position:relative;height:160px;background:var(--crema-2);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    overflow:hidden;
+  }
+  .card-imagen img{width:100%;height:100%;object-fit:cover;}
+  .card-imagen .sin-afiche{font-size:42px;}
+  .sello{
+    position:absolute;top:10px;left:10px;
+    color:white;font-weight:800;font-size:11px;padding:5px 12px;border-radius:100px;
+    text-transform:uppercase;letter-spacing:.03em;
+    box-shadow:0 3px 8px rgba(0,0,0,0.15);
+  }
+  .precio-tag{
+    position:absolute;top:10px;right:10px;background:white;font-weight:800;font-size:11.5px;
+    padding:5px 11px;border-radius:100px;color:var(--tinta);box-shadow:0 3px 8px rgba(0,0,0,0.1);
+  }
+  .card-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px;flex:1;}
+  .card-fecha{font-size:12.5px;font-weight:800;color:var(--coral);letter-spacing:.02em;text-transform:uppercase;}
+  .card-titulo{font-family:'Baloo 2',sans-serif;font-size:18px;font-weight:700;line-height:1.2;}
+  .card-meta{font-size:13px;color:var(--gris-metal);display:flex;align-items:center;gap:6px;}
+  .card-desc{font-size:13.5px;color:var(--gris-metal);line-height:1.4;margin-top:2px;}
+
+  .vacio{
+    text-align:center;padding:60px 20px;color:var(--gris-metal);
+  }
+  .vacio .em{font-size:44px;margin-bottom:10px;}
+
+  /* ---------- Modal afiche ---------- */
+  .modal-fondo{
+    position:fixed;inset:0;background:rgba(27,27,47,0.82);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .modal-fondo.oculto{display:none;}
+  .modal-afiche{max-width:min(560px,90vw);max-height:88vh;border-radius:14px;overflow:hidden;position:relative;}
+  .modal-afiche img{max-height:88vh;object-fit:contain;}
+  .cerrar-modal{
+    position:absolute;top:-14px;right:-14px;background:white;border:none;border-radius:50%;
+    width:36px;height:36px;font-size:18px;font-weight:800;box-shadow:0 4px 10px rgba(0,0,0,0.2);
+  }
+
+  /* ---------- Modal publicar ---------- */
+  .modal-form{
+    background:white;border-radius:20px;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;
+    padding:28px;position:relative;
+  }
+  .modal-form h2{margin:0 0 4px;font-size:24px;}
+  .modal-form .sub{color:var(--gris-metal);font-size:13.5px;margin:0 0 20px;}
+  .campo{margin-bottom:16px;}
+  .campo label{display:block;font-weight:700;font-size:13.5px;margin-bottom:6px;}
+  .campo input[type=text], .campo input[type=date], .campo input[type=time], .campo textarea, .campo select{
+    width:100%;border:2px solid var(--borde);border-radius:12px;padding:11px 13px;font-family:inherit;font-size:14px;outline:none;background:var(--crema);
+  }
+  .campo textarea{resize:vertical;min-height:80px;}
+  .campo input:focus, .campo textarea:focus, .campo select:focus{border-color:var(--celeste);}
+  .fila-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .dropzone{
+    border:2px dashed var(--borde);border-radius:14px;padding:22px;text-align:center;
+    color:var(--gris-metal);font-size:13.5px;font-weight:600;cursor:pointer;background:var(--crema-2);
+    position:relative;
+  }
+  .dropzone.arrastrando{border-color:var(--celeste);background:#EAF7FF;}
+  .preview-afiche{position:relative;border-radius:12px;overflow:hidden;margin-top:8px;}
+  .preview-afiche button{
+    position:absolute;top:8px;right:8px;background:rgba(27,27,47,0.75);color:white;border:none;
+    border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;
+  }
+  .btn-enviar{
+    width:100%;background:var(--coral);color:white;border:none;padding:14px;border-radius:14px;
+    font-weight:800;font-size:15px;margin-top:6px;box-shadow:0 4px 0 #cc4d2f;
+  }
+  .btn-enviar:disabled{opacity:.6;}
+  .aviso-ia{
+    background:var(--crema-2);border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--gris-metal);
+    display:flex;gap:8px;align-items:flex-start;margin-top:14px;
+  }
+  .cerrar-x{
+    position:absolute;top:18px;right:18px;background:var(--crema-2);border:none;border-radius:50%;
+    width:32px;height:32px;font-size:16px;font-weight:800;
+  }
+
+  /* ---------- Chat IA flotante ---------- */
+  .chat-btn{
+    position:fixed;bottom:22px;right:22px;z-index:60;
+    background:var(--violeta);color:white;border:none;border-radius:100px;
+    padding:15px 22px;font-weight:800;font-size:14.5px;display:flex;align-items:center;gap:8px;
+    box-shadow:0 8px 20px rgba(108,74,182,0.4);
+  }
+  .chat-panel{
+    position:fixed;bottom:90px;right:22px;z-index:60;width:min(340px,88vw);
+    background:white;border-radius:18px;box-shadow:0 16px 40px rgba(27,27,47,0.25);
+    border:2px solid var(--borde);overflow:hidden;display:flex;flex-direction:column;max-height:60vh;
+  }
+  .chat-panel.oculto{display:none;}
+  .chat-head{background:var(--violeta);color:white;padding:14px 16px;font-weight:800;font-family:'Baloo 2',sans-serif;font-size:16px;}
+  .chat-mensajes{padding:14px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;font-size:13.5px;}
+  .msg{padding:9px 12px;border-radius:12px;max-width:85%;line-height:1.35;}
+  .msg.bot{background:var(--crema-2);align-self:flex-start;}
+  .msg.user{background:var(--celeste);color:white;align-self:flex-end;}
+  .chat-input{display:flex;border-top:2px solid var(--borde);}
+  .chat-input input{flex:1;border:none;padding:12px 14px;font-family:inherit;font-size:13.5px;outline:none;}
+  .chat-input button{background:var(--violeta);color:white;border:none;padding:0 16px;font-weight:800;}
+
+  footer{
+    border-top:2px solid var(--borde);padding:28px 24px;text-align:center;color:var(--gris-metal);font-size:13px;
+    display:flex;flex-direction:column;align-items:center;gap:14px;
+  }
+  .btn-anunciar{
+    display:inline-flex;align-items:center;gap:8px;
+    background:#25D366;color:white;font-weight:800;font-size:14px;
+    padding:12px 22px;border-radius:100px;box-shadow:0 4px 0 #1aa04e;
+    transition:transform .12s ease;
+  }
+  .btn-anunciar:active{transform:translateY(3px);box-shadow:0 1px 0 #1aa04e;}
+
+  @media (max-width:760px){
+    .hero{grid-template-columns:1fr;padding-top:32px;}
+    .hero-visual{display:none;}
+    .hero h1{font-size:32px;}
+    .fila-2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <svg class="sol" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="26" fill="#FFC93C" stroke="#1B1B2F" stroke-width="3"/>
+        <g stroke="#1B1B2F" stroke-width="3">
+          <line x1="50" y1="4" x2="50" y2="18"/>
+          <line x1="50" y1="82" x2="50" y2="96"/>
+          <line x1="4" y1="50" x2="18" y2="50"/>
+          <line x1="82" y1="50" x2="96" y2="50"/>
+          <line x1="18" y1="18" x2="27" y2="27"/>
+          <line x1="73" y1="73" x2="82" y2="82"/>
+          <line x1="82" y1="18" x2="73" y2="27"/>
+          <line x1="27" y1="73" x2="18" y2="82"/>
+        </g>
+      </svg>
+      <div class="brand-text">
+        <b>Eventos Uruguayos</b>
+        <span>LO QUE PASA, CERCA TUYO</span>
+      </div>
+    </div>
+    <button class="btn-publicar" onclick="abrirPublicar()">+ Publicar evento</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <h1>Descubrí <em>lo que pasa</em> en Uruguay, hoy.</h1>
+    <p>Música, teatro, deporte, planes con niños y mucho más — publicado por la propia gente, gratis y para todo el país.</p>
+    <div class="hero-badges">
+      <div class="hero-badge">🎟️ Publicación gratuita</div>
+      <div class="hero-badge">📍 Los 19 departamentos</div>
+      <div class="hero-badge">🤖 Buscá con IA</div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <svg viewBox="0 0 400 240" width="100%" height="100%">
+      <circle class="blob" cx="70" cy="60" r="70" fill="#00A9E0" opacity="0.18"/>
+      <circle class="blob" cx="300" cy="180" r="90" fill="#FF6B4A" opacity="0.16"/>
+      <circle class="blob" cx="250" cy="50" r="46" fill="#FFC93C" opacity="0.28"/>
+      <circle class="blob" cx="120" cy="190" r="34" fill="#6C4AB6" opacity="0.22"/>
+    </svg>
+  </div>
+</section>
+
+<div class="barra-filtros">
+  <div class="buscador">
+    <input id="input-buscar" type="text" placeholder="Buscá un evento, artista o lugar...">
+    <select id="select-depto">
+      <option value="">Todo el país</option>
+    </select>
+    <button class="btn-buscar" onclick="renderizar()">🔍</button>
+  </div>
+  <div class="categorias" id="categorias"></div>
+</div>
+
+<div class="contenedor">
+  <div class="grid-eventos" id="grid-eventos"></div>
+  <div class="vacio" id="vacio" style="display:none;">
+    <div class="em">🧭</div>
+    <div><b>No encontramos eventos con esos filtros.</b></div>
+    <div>Probá cambiando la categoría o el departamento.</div>
+  </div>
+</div>
+
+<footer>
+  <div>Eventos Uruguayos · Hecho con 🇺🇾</div>
+  <a class="btn-anunciar" href="https://wa.me/598098461307?text=Hola!%20Quiero%20publicitar%20en%20Eventos%20Uruguayos" target="_blank" rel="noopener">
+    📢 ¿Querés publicitar en la página? Escribinos por WhatsApp
+  </a>
+</footer>
+
+<!-- Modal afiche -->
+<div class="modal-fondo oculto" id="modal-afiche" onclick="cerrarAfiche(event)">
+  <div class="modal-afiche">
+    <button class="cerrar-modal" onclick="cerrarAfiche(event)">✕</button>
+    <img id="img-afiche-grande" src="" alt="Afiche del evento">
+  </div>
+</div>
+
+<!-- Modal publicar -->
+<div class="modal-fondo oculto" id="modal-publicar" onclick="cerrarPublicar(event)">
+  <div class="modal-form" onclick="event.stopPropagation()">
+    <button class="cerrar-x" onclick="cerrarPublicarBtn()">✕</button>
+    <h2>Publicá tu evento</h2>
+    <p class="sub">Es gratis. La IA revisa el contenido antes de publicarlo.</p>
+    <form id="form-evento" onsubmit="publicarEvento(event)">
+      <div class="campo">
+        <label>Título del evento</label>
+        <input type="text" id="f-titulo" required placeholder="Ej: Feria de artesanos en el Parque Rodó">
+      </div>
+      <div class="fila-2">
+        <div class="campo">
+          <label>Categoría</label>
+          <select id="f-categoria" required></select>
+        </div>
+        <div class="campo">
+          <label>Departamento</label>
+          <select id="f-depto" required></select>
+        </div>
+      </div>
+      <div class="fila-2">
+        <div class="campo">
+          <label>Fecha</label>
+          <input type="date" id="f-fecha" required>
+        </div>
+        <div class="campo">
+          <label>Hora</label>
+          <input type="time" id="f-hora">
+        </div>
+      </div>
+      <div class="campo">
+        <label>Lugar</label>
+        <input type="text" id="f-lugar" placeholder="Ej: Rambla de Pocitos">
+      </div>
+      <div class="campo">
+        <label>Precio</label>
+        <input type="text" id="f-precio" placeholder="Gratis, o el monto en $U">
+      </div>
+      <div class="campo">
+        <label>Descripción</label>
+        <textarea id="f-desc" placeholder="Contá de qué se trata (la IA la puede mejorar automáticamente)"></textarea>
+      </div>
+      <div class="campo">
+        <label>Afiche (opcional)</label>
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('f-afiche').click()">
+          📎 Hacé clic o arrastrá una imagen (JPG, PNG o WEBP, hasta 5MB)
+        </div>
+        <input type="file" id="f-afiche" accept="image/png,image/jpeg,image/webp" style="display:none;">
+        <div id="preview-contenedor"></div>
+      </div>
+      <button class="btn-enviar" type="submit">Publicar evento</button>
+      <div class="aviso-ia">🤖 Antes de publicarse, la IA revisa que el contenido sea apropiado y puede sugerir mejoras a la descripción.</div>
+    </form>
+  </div>
+</div>
+
+<!-- Chat IA -->
+<button class="chat-btn" onclick="toggleChat()">💬 Preguntale a la IA</button>
+<div class="chat-panel oculto" id="chat-panel">
+  <div class="chat-head">Asistente de Eventos Uruguayos</div>
+  <div class="chat-mensajes" id="chat-mensajes">
+    <div class="msg bot">¡Hola! Preguntame cosas como "¿qué hay gratis este finde?" o "eventos para niños en Montevideo".</div>
+  </div>
+  <div class="chat-input">
+    <input type="text" id="chat-input-txt" placeholder="Escribí tu pregunta..." onkeydown="if(event.key==='Enter') enviarChat()">
+    <button onclick="enviarChat()">Enviar</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONEXIÓN A SUPABASE (base de datos real y compartida)
+   ============================================================ */
+const SUPABASE_URL = 'https://fizluyzyyxjfhvqrlxhr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ExGYs2UKgf66rb6fM8RSxQ_X0FWwtKs';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* PENDIENTE:
+   - IA (Anthropic API): el chat y la mejora de descripción hoy
+     funcionan con un buscador local simple. Para IA real, esas
+     llamadas deben hacerse desde un backend/función serverless
+     que guarde la API key (nunca poner la key en este HTML).
+   - MERCADOPAGO / WHATSAPP: agregar los links de pago y el
+     número de contacto en las tarjetas patrocinadas.
+*/
+
+const CATEGORIAS = [
+  {id:'musica',   nombre:'Música',   color:'--coral',   emoji:'🎵'},
+  {id:'teatro',   nombre:'Teatro',   color:'--violeta', emoji:'🎭'},
+  {id:'deporte',  nombre:'Deporte',  color:'--celeste', emoji:'⚽'},
+  {id:'ninos',    nombre:'Niños',    color:'--amarillo',emoji:'🧒'},
+  {id:'cultural', nombre:'Cultural', color:'--verde',   emoji:'🎨'},
+  {id:'motores',  nombre:'Motores',  color:'--gris-metal',emoji:'🏁'},
+  {id:'adultos',  nombre:'Adultos',  color:'--rosa',    emoji:'🌙'},
+];
+
+const DEPARTAMENTOS = ["Montevideo","Canelones","Maldonado","Rocha","Colonia","San José","Durazno","Salto","Paysandú","Tacuarembó","Rivera","Artigas","Cerro Largo","Treinta y Tres","Lavalleja","Florida","Flores","Río Negro","Soriano"];
+
+const EVENTOS_DEMO = [
+  {titulo:"Festival de Murga de Verano", categoria:"cultural", depto:"Montevideo", fecha:"2026-07-18", hora:"20:00", lugar:"Teatro de Verano", precio:"Gratis", desc:"Una noche a puro tablado con murgas jóvenes de todo el país.", afiche:""},
+  {titulo:"Clásico de fútbol juvenil", categoria:"deporte", depto:"Canelones", fecha:"2026-07-12", hora:"16:00", lugar:"Complejo Deportivo Municipal", precio:"$150", desc:"Definición del torneo juvenil interbarrial.", afiche:""},
+  {titulo:"Taller de títeres para niños", categoria:"ninos", depto:"Maldonado", fecha:"2026-07-13", hora:"11:00", lugar:"Plaza San Fernando", precio:"Gratis", desc:"Taller gratuito para chicos de 4 a 10 años.", afiche:""},
+  {titulo:"Noche de jazz en la Ciudad Vieja", categoria:"musica", depto:"Montevideo", fecha:"2026-07-19", hora:"21:30", lugar:"Bar La Ronda", precio:"$400", desc:"Trío local en formato íntimo.", afiche:""},
+  {titulo:"Exhibición de autos clásicos", categoria:"motores", depto:"Colonia", fecha:"2026-07-20", hora:"10:00", lugar:"Rambla de Colonia", precio:"Gratis", desc:"Más de 50 autos de colección expuestos frente al río.", afiche:""},
+  {titulo:"Obra: 'El Sur también existe'", categoria:"teatro", depto:"Salto", fecha:"2026-07-25", hora:"20:30", lugar:"Teatro Larrañaga", precio:"$300", desc:"Puesta en escena sobre identidad y territorio.", afiche:""},
+];
+
+let eventos = [];
+let categoriaActiva = null;
+let afichePendiente = "";
+
+async function cargarEventos(){
+  const grid = document.getElementById('grid-eventos');
+  grid.innerHTML = '<div class="vacio">Cargando eventos...</div>';
+  const { data, error } = await db.from('eventos').select('*').order('fecha', {ascending:true});
+  if(error){
+    grid.innerHTML = `<div class="vacio">No se pudieron cargar los eventos. (${error.message})</div>`;
+    return;
+  }
+  // Traducimos los nombres de columnas de la base a los que usa la app
+  eventos = (data || []).map(ev => ({
+    id: ev.id,
+    titulo: ev.titulo,
+    categoria: ev.categoria,
+    depto: ev.depto,
+    fecha: ev.fecha,
+    hora: ev.hora,
+    lugar: ev.lugar,
+    precio: ev.precio,
+    desc: ev.descripcion,
+    afiche: ev.afiche_url,
+  }));
+  renderizar();
+}
+
+function colorCat(id){
+  const c = CATEGORIAS.find(c=>c.id===id);
+  return c ? `var(${c.color})` : 'var(--gris-metal)';
+}
+function emojiCat(id){
+  const c = CATEGORIAS.find(c=>c.id===id);
+  return c ? c.emoji : '📌';
+}
+function nombreCat(id){
+  const c = CATEGORIAS.find(c=>c.id===id);
+  return c ? c.nombre : id;
+}
+
+function initFiltros(){
+  const cont = document.getElementById('categorias');
+  cont.innerHTML = CATEGORIAS.map(c => `
+    <button class="chip" id="chip-${c.id}" style="color:var(${c.color})" onclick="toggleCategoria('${c.id}')">
+      <span class="dot"></span>${c.emoji} ${c.nombre}
+    </button>
+  `).join('');
+
+  const selDepto = document.getElementById('select-depto');
+  const selFDepto = document.getElementById('f-depto');
+  const selFCat = document.getElementById('f-categoria');
+  DEPARTAMENTOS.forEach(d=>{
+    selDepto.innerHTML += `<option value="${d}">${d}</option>`;
+    selFDepto.innerHTML += `<option value="${d}">${d}</option>`;
+  });
+  CATEGORIAS.forEach(c=>{
+    selFCat.innerHTML += `<option value="${c.id}">${c.emoji} ${c.nombre}</option>`;
+  });
+}
+
+function toggleCategoria(id){
+  categoriaActiva = (categoriaActiva === id) ? null : id;
+  CATEGORIAS.forEach(c=>{
+    const el = document.getElementById('chip-'+c.id);
+    if(c.id === categoriaActiva){
+      el.classList.add('activo');
+      el.style.background = `var(${c.color})`;
+      el.style.color = 'white';
+    } else {
+      el.classList.remove('activo');
+      el.style.background = 'white';
+      el.style.color = `var(${c.color})`;
+    }
+  });
+  renderizar();
+}
+
+function renderizar(){
+  const texto = document.getElementById('input-buscar').value.trim().toLowerCase();
+  const depto = document.getElementById('select-depto').value;
+
+  let filtrados = eventos.filter(ev=>{
+    if(categoriaActiva && ev.categoria !== categoriaActiva) return false;
+    if(depto && ev.depto !== depto) return false;
+    if(texto && !(ev.titulo.toLowerCase().includes(texto) || ev.desc.toLowerCase().includes(texto) || ev.lugar.toLowerCase().includes(texto))) return false;
+    return true;
+  });
+
+  filtrados.sort((a,b)=> a.fecha.localeCompare(b.fecha));
+
+  const grid = document.getElementById('grid-eventos');
+  const vacio = document.getElementById('vacio');
+
+  if(filtrados.length === 0){
+    grid.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  grid.innerHTML = filtrados.map((ev,i)=>{
+    const idxReal = eventos.indexOf(ev);
+    const fechaLegible = new Date(ev.fecha+'T00:00:00').toLocaleDateString('es-UY',{weekday:'short',day:'numeric',month:'short'});
+    return `
+    <div class="card">
+      <div class="card-imagen" ${ev.afiche ? `onclick="verAfiche('${idxReal}')"` : ''}>
+        <span class="sello" style="background:${colorCat(ev.categoria)}">${nombreCat(ev.categoria)}</span>
+        <span class="precio-tag">${ev.precio}</span>
+        ${ev.afiche ? `<img src="${ev.afiche}" alt="Afiche de ${ev.titulo}">` : `<div class="sin-afiche">${emojiCat(ev.categoria)}</div>`}
+      </div>
+      <div class="card-body">
+        <div class="card-fecha">${fechaLegible}${ev.hora ? ' · '+ev.hora+' hs' : ''}</div>
+        <div class="card-titulo">${ev.titulo}</div>
+        <div class="card-meta">📍 ${ev.lugar || ev.depto} · ${ev.depto}</div>
+        <div class="card-desc">${ev.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function verAfiche(idx){
+  document.getElementById('img-afiche-grande').src = eventos[idx].afiche;
+  document.getElementById('modal-afiche').classList.remove('oculto');
+}
+function cerrarAfiche(e){
+  if(e.target.id === 'modal-afiche' || e.target.classList.contains('cerrar-modal')){
+    document.getElementById('modal-afiche').classList.add('oculto');
+  }
+}
+
+function abrirPublicar(){
+  document.getElementById('modal-publicar').classList.remove('oculto');
+}
+function cerrarPublicarBtn(){
+  document.getElementById('modal-publicar').classList.add('oculto');
+}
+function cerrarPublicar(e){
+  if(e.target.id === 'modal-publicar') cerrarPublicarBtn();
+}
+
+const dropzone = document.getElementById('dropzone');
+const inputAfiche = document.getElementById('f-afiche');
+dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('arrastrando'); });
+dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('arrastrando'));
+dropzone.addEventListener('drop', e=>{
+  e.preventDefault(); dropzone.classList.remove('arrastrando');
+  if(e.dataTransfer.files[0]) manejarArchivo(e.dataTransfer.files[0]);
+});
+inputAfiche.addEventListener('change', e=>{
+  if(e.target.files[0]) manejarArchivo(e.target.files[0]);
+});
+function manejarArchivo(file){
+  if(file.size > 5*1024*1024){ alert('La imagen supera los 5MB.'); return; }
+  const reader = new FileReader();
+  reader.onload = e=>{
+    afichePendiente = e.target.result;
+    document.getElementById('preview-contenedor').innerHTML = `
+      <div class="preview-afiche">
+        <img src="${afichePendiente}">
+        <button type="button" onclick="quitarAfiche()">Quitar</button>
+      </div>`;
+  };
+  reader.readAsDataURL(file);
+}
+function quitarAfiche(){
+  afichePendiente = "";
+  document.getElementById('preview-contenedor').innerHTML = '';
+  inputAfiche.value = '';
+}
+
+async function publicarEvento(e){
+  e.preventDefault();
+  const boton = e.target.querySelector('.btn-enviar');
+  boton.disabled = true;
+  boton.textContent = 'Publicando...';
+
+  const nuevo = {
+    titulo: document.getElementById('f-titulo').value,
+    categoria: document.getElementById('f-categoria').value,
+    depto: document.getElementById('f-depto').value,
+    fecha: document.getElementById('f-fecha').value,
+    hora: document.getElementById('f-hora').value,
+    lugar: document.getElementById('f-lugar').value,
+    precio: document.getElementById('f-precio').value || 'Gratis',
+    descripcion: document.getElementById('f-desc').value || 'Sin descripción.',
+    afiche_url: afichePendiente || null,
+  };
+  // Acá es donde iría la llamada de moderación por IA antes de insertar.
+  const { error } = await db.from('eventos').insert([nuevo]);
+
+  boton.disabled = false;
+  boton.textContent = 'Publicar evento';
+
+  if(error){
+    alert('No se pudo publicar el evento: ' + error.message);
+    return;
+  }
+
+  document.getElementById('form-evento').reset();
+  quitarAfiche();
+  cerrarPublicarBtn();
+  await cargarEventos();
+}
+
+/* Chat IA: búsqueda local simple sobre los eventos cargados.
+   Para IA generativa real, este llamado debe ir a un backend propio. */
+function toggleChat(){
+  document.getElementById('chat-panel').classList.toggle('oculto');
+}
+function enviarChat(){
+  const input = document.getElementById('chat-input-txt');
+  const texto = input.value.trim();
+  if(!texto) return;
+  const cont = document.getElementById('chat-mensajes');
+  cont.innerHTML += `<div class="msg user">${texto}</div>`;
+  input.value = '';
+
+  const t = texto.toLowerCase();
+  let resultados = eventos.filter(ev=>{
+    let ok = true;
+    if(t.includes('gratis')) ok = ok && ev.precio.toLowerCase().includes('gratis');
+    if(t.includes('niñ') || t.includes('nin')) ok = ok && ev.categoria === 'ninos';
+    if(t.includes('música') || t.includes('musica')) ok = ok && ev.categoria === 'musica';
+    if(t.includes('teatro')) ok = ok && ev.categoria === 'teatro';
+    if(t.includes('deporte')) ok = ok && ev.categoria === 'deporte';
+    DEPARTAMENTOS.forEach(d=>{ if(t.includes(d.toLowerCase())) ok = ok && ev.depto.toLowerCase() === d.toLowerCase(); });
+    return ok;
+  });
+
+  let respuesta;
+  if(resultados.length === 0){
+    respuesta = "No encontré eventos con eso. Probá con otra categoría, departamento o 'gratis'.";
+  } else {
+    respuesta = `Encontré ${resultados.length} evento(s): ` + resultados.slice(0,4).map(r=>`"${r.titulo}" (${r.depto}, ${r.fecha})`).join(', ') + '.';
+  }
+  cont.innerHTML += `<div class="msg bot">${respuesta}</div>`;
+  cont.scrollTop = cont.scrollHeight;
+}
+
+document.getElementById('input-buscar').addEventListener('input', renderizar);
+document.getElementById('select-depto').addEventListener('change', renderizar);
+
+initFiltros();
+cargarEventos();
+</script>
+</body>
+</html>
