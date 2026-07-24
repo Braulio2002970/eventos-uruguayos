@@ -507,9 +507,32 @@ let eventos = [];
 let categoriaActiva = null;
 let afichePendiente = "";
 
+/* Borra automáticamente de la base de datos los eventos cuya fecha (o fecha hasta,
+   si tienen) haya vencido hace más de 7 días. Esto libera espacio de afiches sin
+   que nadie tenga que entrar a Supabase a limpiar manualmente. Se ejecuta cada vez
+   que alguien abre la app; no hace falta ni backend ni tareas programadas. */
+async function limpiarEventosVencidos(){
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 7);
+  const limiteStr = limite.toISOString().slice(0,10);
+
+  // Trae solo id, fecha y fecha_hasta para decidir qué borrar (liviano)
+  const { data, error } = await db.from('eventos').select('id, fecha, fecha_hasta');
+  if(error || !data) return; // si falla, no interrumpe la carga normal de eventos
+
+  const idsAVencer = data
+    .filter(ev => (ev.fecha_hasta || ev.fecha) < limiteStr)
+    .map(ev => ev.id);
+
+  if(idsAVencer.length > 0){
+    await db.from('eventos').delete().in('id', idsAVencer);
+  }
+}
+
 async function cargarEventos(){
   const grid = document.getElementById('grid-eventos');
   grid.innerHTML = '<div class="vacio">Cargando eventos...</div>';
+  await limpiarEventosVencidos();
   const { data, error } = await db.from('eventos').select('*').order('fecha', {ascending:true});
   if(error){
     grid.innerHTML = `<div class="vacio">No se pudieron cargar los eventos. (${error.message})</div>`;
