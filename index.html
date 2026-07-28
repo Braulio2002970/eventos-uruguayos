@@ -137,11 +137,11 @@
   }
   .sidebar-filtros{
     width:230px;flex:none;
-    position:sticky;top:172px;
+    position:sticky;top:calc(var(--header-h, 170px) + 16px);
     background:white;border:2px solid var(--borde);border-radius:20px;
     padding:18px;box-shadow:var(--sombra);
     display:flex;flex-direction:column;gap:10px;
-    max-height:calc(100vh - 190px);overflow-y:auto;
+    max-height:calc(100vh - var(--header-h, 170px) - 32px);overflow-y:auto;
   }
   .sidebar-titulo{
     font-family:'Baloo 2',sans-serif;font-size:16px;font-weight:700;color:var(--tinta);
@@ -326,14 +326,21 @@
     .hero-visual{display:none;}
     .hero h1{font-size:32px;}
     .fila-2{grid-template-columns:1fr;}
-    .titulo-principal h1{font-size:21px;}
-    .header-bottom{justify-content:center;}
-    .admin-mini img{width:52px;height:52px;}
-    .admin-mini-cta{max-width:200px;}
+    .titulo-principal h1{font-size:19px;}
+    .header-top{padding:14px 20px 8px;}
+    .header-bottom{justify-content:center;padding:8px 20px 10px;}
+    .admin-mini{gap:10px;}
+    .admin-mini img{width:42px;height:42px;box-shadow:0 0 0 2px white, 0 0 0 3.5px var(--amarillo);}
+    .admin-mini-texto b{font-size:14px;}
+    .admin-mini-cta{display:none;}
+    .admin-mini-gracias{display:none;}
+    .admin-mini-redes{margin-top:2px;gap:6px;}
+    .admin-mini-redes a{width:28px;height:28px;}
+    .admin-mini-redes a svg{width:15px;height:15px;}
 
     .layout-principal{flex-direction:column;padding:14px 16px 0;gap:14px;}
     .sidebar-filtros{
-      width:100%;position:sticky;top:148px;z-index:30;
+      width:100%;position:sticky;top:var(--header-h, 130px);z-index:30;
       max-height:none;overflow-y:visible;
       border-radius:16px;padding:12px 14px;
     }
@@ -347,7 +354,7 @@
 </head>
 <body>
 
-<header>
+<header id="siteHeader">
   <div class="header-top">
     <svg class="sol" viewBox="0 0 100 100">
       <circle cx="50" cy="50" r="26" fill="#FFC93C" stroke="#1B1B2F" stroke-width="3"/>
@@ -847,6 +854,19 @@ function enviarChat(){
 
 document.getElementById('input-buscar').addEventListener('input', renderizar);
 document.getElementById('select-depto').addEventListener('change', renderizar);
+
+/* Mide el alto real del encabezado (que puede variar según el tamaño de pantalla
+   o si el texto se acomoda distinto) y lo guarda como variable CSS, para que el
+   sidebar de filtros siempre se "enganche" justo debajo, sin importar cuánto
+   mida el header. Se recalcula si cambia el tamaño de la ventana. */
+function ajustarAlturaHeader(){
+  const header = document.getElementById('siteHeader');
+  if(!header) return;
+  document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
+}
+window.addEventListener('resize', ajustarAlturaHeader);
+window.addEventListener('load', ajustarAlturaHeader);
+ajustarAlturaHeader();
 
 initFiltros();
 cargarEventos();
