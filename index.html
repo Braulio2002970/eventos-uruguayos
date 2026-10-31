@@ -525,7 +525,7 @@
       <div class="campo">
         <label>Afiche (opcional)</label>
         <div class="dropzone" id="dropzone" onclick="document.getElementById('f-afiche').click()">
-          📎 Hacé clic o arrastrá una imagen (JPG, PNG o WEBP, hasta 5MB)
+          📎 Hacé clic o arrastrá una imagen (JPG, PNG o WEBP; la app la achica sola)
         </div>
         <input type="file" id="f-afiche" accept="image/png,image/jpeg,image/webp" style="display:none;">
         <div id="preview-contenedor"></div>
@@ -617,7 +617,9 @@ async function cargarEventos(){
   const grid = document.getElementById('grid-eventos');
   grid.innerHTML = '<div class="vacio">Cargando eventos...</div>';
   await limpiarEventosVencidos();
-  const { data, error } = await db.from('eventos').select('*').order('fecha', {ascending:true});
+  const { data, error } = await db.from('eventos')
+    .select('id,titulo,categoria,depto,fecha,fecha_hasta,hora,lugar,precio,descripcion,thumb_url')
+    .order('fecha', {ascending:true}).limit(300);
   if(error){
     grid.innerHTML = `<div class="vacio">No se pudieron cargar los eventos. (${error.message})</div>`;
     return;
@@ -634,7 +636,7 @@ async function cargarEventos(){
     lugar: ev.lugar,
     precio: ev.precio,
     desc: ev.descripcion,
-    afiche: ev.afiche_url,
+    thumb: ev.thumb_url,
   }));
   renderizar();
 }
@@ -725,10 +727,10 @@ function renderizar(){
     }
     return `
     <div class="card">
-      <div class="card-imagen" ${ev.afiche ? `onclick="verAfiche('${idxReal}')"` : ''}>
+      <div class="card-imagen" onclick="verAfiche('${idxReal}')">
         <span class="sello" style="background:${colorCat(ev.categoria)}">${nombreCat(ev.categoria)}</span>
         <span class="precio-tag">${ev.precio}</span>
-        ${ev.afiche ? `<img src="${ev.afiche}" alt="Afiche de ${ev.titulo}">` : `<div class="sin-afiche">${emojiCat(ev.categoria)}</div>`}
+        ${ev.thumb ? `<img src="${ev.thumb}" loading="lazy" decoding="async" alt="Afiche de ${ev.titulo}">` : `<div class="sin-afiche">${emojiCat(ev.categoria)}</div>`}
       </div>
       <div class="card-body">
         <div class="card-fecha">${textoFecha}${ev.hora ? ' · '+ev.hora+' hs' : ''}</div>
@@ -740,9 +742,22 @@ function renderizar(){
   }).join('');
 }
 
-function verAfiche(idx){
-  document.getElementById('img-afiche-grande').src = eventos[idx].afiche;
-  document.getElementById('modal-afiche').classList.remove('oculto');
+async function verAfiche(idx){
+  const ev = eventos[idx];
+  if(!ev) return;
+  const img = document.getElementById('img-afiche-grande');
+  const modal = document.getElementById('modal-afiche');
+  if(ev.thumb){            // muestra la miniatura al instante mientras llega la grande
+    img.src = ev.thumb;
+    modal.classList.remove('oculto');
+  }
+  if(ev.full === undefined){
+    const { data } = await db.from('eventos').select('afiche_url').eq('id', ev.id).single();
+    ev.full = (data && data.afiche_url) ? data.afiche_url : '';
+  }
+  if(!ev.full) return;     // el evento no tiene afiche
+  img.src = ev.full;
+  modal.classList.remove('oculto');
 }
 function cerrarAfiche(e){
   if(e.target.id === 'modal-afiche' || e.target.classList.contains('cerrar-modal')){
@@ -771,21 +786,58 @@ dropzone.addEventListener('drop', e=>{
 inputAfiche.addEventListener('change', e=>{
   if(e.target.files[0]) manejarArchivo(e.target.files[0]);
 });
-function manejarArchivo(file){
-  if(file.size > 5*1024*1024){ alert('La imagen supera los 5MB.'); return; }
-  const reader = new FileReader();
-  reader.onload = e=>{
-    afichePendiente = e.target.result;
+let aficheArchivo = null;   // {full, thumb}: versiones ya achicadas, listas para subir
+function reducirImagen(file, max, calidad){
+  return new Promise((res, rej)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      const x = c.getContext('2d');
+      x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+      x.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? res(b) : rej(new Error('No se pudo convertir la imagen')), 'image/jpeg', calidad);
+    };
+    img.onerror = ()=> rej(new Error('No se pudo leer la imagen'));
+    img.src = url;
+  });
+}
+async function subirAfiche(full, thumb){
+  const base = 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const opts = {contentType:'image/jpeg', cacheControl:'31536000'};
+  const a = await db.storage.from('afiches').upload(base + '.jpg', full, opts);
+  if(a.error) throw a.error;
+  const b = await db.storage.from('afiches').upload(base + '_t.jpg', thumb, opts);
+  if(b.error) throw b.error;
+  return {
+    afiche_url: db.storage.from('afiches').getPublicUrl(base + '.jpg').data.publicUrl,
+    thumb_url:  db.storage.from('afiches').getPublicUrl(base + '_t.jpg').data.publicUrl,
+  };
+}
+async function manejarArchivo(file){
+  if(!file.type.startsWith('image/')){ alert('Elegí un archivo de imagen.'); return; }
+  if(file.size > 12*1024*1024){ alert('La imagen supera los 12MB.'); return; }
+  try{
+    const full = await reducirImagen(file, 1100, 0.8);
+    const thumb = await reducirImagen(file, 400, 0.7);
+    aficheArchivo = {full, thumb};
+    afichePendiente = URL.createObjectURL(full);   // solo para la vista previa
     document.getElementById('preview-contenedor').innerHTML = `
       <div class="preview-afiche">
         <img src="${afichePendiente}">
         <button type="button" onclick="quitarAfiche()">Quitar</button>
       </div>`;
-  };
-  reader.readAsDataURL(file);
+  }catch(err){
+    alert('No se pudo procesar la imagen. Probá con otra.');
+  }
 }
 function quitarAfiche(){
   afichePendiente = "";
+  aficheArchivo = null;
   document.getElementById('preview-contenedor').innerHTML = '';
   inputAfiche.value = '';
 }
@@ -795,6 +847,18 @@ async function publicarEvento(e){
   const boton = e.target.querySelector('.btn-enviar');
   boton.disabled = true;
   boton.textContent = 'Publicando...';
+
+  let urlsAfiche = {afiche_url:null, thumb_url:null};
+  if(aficheArchivo){
+    try{
+      urlsAfiche = await subirAfiche(aficheArchivo.full, aficheArchivo.thumb);
+    }catch(err){
+      boton.disabled = false;
+      boton.textContent = 'Publicar evento';
+      alert('No se pudo subir el afiche: ' + (err.message || err));
+      return;
+    }
+  }
 
   const nuevo = {
     titulo: document.getElementById('f-titulo').value,
@@ -806,7 +870,8 @@ async function publicarEvento(e){
     lugar: document.getElementById('f-lugar').value,
     precio: document.getElementById('f-precio').value || 'Gratis',
     descripcion: document.getElementById('f-desc').value || 'Sin descripción.',
-    afiche_url: afichePendiente || null,
+    afiche_url: urlsAfiche.afiche_url,
+    thumb_url: urlsAfiche.thumb_url,
   };
   // Acá es donde iría la llamada de moderación por IA antes de insertar.
   const { error } = await db.from('eventos').insert([nuevo]);
@@ -875,6 +940,48 @@ function ajustarAlturaHeader(){
 window.addEventListener('resize', ajustarAlturaHeader);
 window.addEventListener('load', ajustarAlturaHeader);
 ajustarAlturaHeader();
+
+/* HERRAMIENTA DE UNA SOLA VEZ: pasa los afiches viejos (guardados como texto dentro de
+   la tabla) a archivos livianos. Se usa abriendo la app con ?migrar=1 al final de la
+   dirección. Solo reemplaza el afiche de un evento si la imagen nueva se subió bien. */
+async function migrarAfichesViejos(btn){
+  btn.disabled = true;
+  const { data: filas, error } = await db.from('eventos').select('id,titulo').is('thumb_url', null);
+  if(error){ alert('Error: ' + error.message); btn.disabled = false; return; }
+  let hechos = 0, sinAfiche = 0, fallos = 0;
+  for(let i = 0; i < filas.length; i++){
+    const f = filas[i];
+    btn.textContent = 'Migrando ' + (i + 1) + ' de ' + filas.length + '...';
+    try{
+      const { data: r, error: e1 } = await db.from('eventos').select('afiche_url').eq('id', f.id).single();
+      if(e1) throw e1;
+      const a = r && r.afiche_url;
+      if(!a || !a.startsWith('data:image/')){ sinAfiche++; continue; }
+      const blob = await (await fetch(a)).blob();
+      const full = await reducirImagen(blob, 1100, 0.8);
+      const thumb = await reducirImagen(blob, 400, 0.7);
+      const urls = await subirAfiche(full, thumb);
+      const { data: up, error: e2 } = await db.from('eventos').update(urls).eq('id', f.id).select('id');
+      if(e2) throw e2;
+      if(!up || up.length === 0) throw new Error('la base no permitió actualizar el evento');
+      hechos++;
+    }catch(err){
+      fallos++;
+      console.error('Falló la migración de', f.titulo, err);
+    }
+  }
+  alert('Listo. Migrados: ' + hechos + '. Sin afiche: ' + sinAfiche + '. Con error: ' + fallos + '.');
+  btn.disabled = false;
+  btn.textContent = 'Migrar afiches viejos';
+  cargarEventos();
+}
+if(new URLSearchParams(location.search).get('migrar') === '1'){
+  const bm = document.createElement('button');
+  bm.textContent = 'Migrar afiches viejos';
+  bm.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9999;padding:12px 16px;border:0;border-radius:10px;background:#1A5FA8;color:#fff;font-weight:700;cursor:pointer';
+  bm.onclick = ()=> migrarAfichesViejos(bm);
+  document.body.appendChild(bm);
+}
 
 initFiltros();
 cargarEventos();
